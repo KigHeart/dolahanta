@@ -1,0 +1,6 @@
+{
+  "name": "DolaHanta",
+  "description": "Smart Barrier Intelligence Platform for Deriv Touch and No Touch Contracts with quantitative probability modeling, regime detection, and risk-aware expected value ranking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
