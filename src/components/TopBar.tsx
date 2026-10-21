@@ -2,20 +2,22 @@
  * DolaHanta — Top Bar Navigation Component
  * Complies with the 3-zone Top Bar Contract from frontend design guidelines:
  * Zone 1: Single text wordmark
- * Zone 2: 4-5 single-line clean nav links
- * Zone 3: 1 primary action / connection control
+ * Zone 2: 4 single-line clean nav links (internal dev specs removed)
+ * Zone 3: Connection status, Risk controls & Client License Log Out
  */
 
 import React from 'react';
 import { ConnectionMode } from '../types/trading';
-import { ShieldAlert, Radio, Activity, Cpu, Download } from 'lucide-react';
+import { ShieldAlert, Radio, Activity, Cpu, LogOut, CheckCircle } from 'lucide-react';
 
 interface TopBarProps {
-  activeTab: 'scanner' | 'studio' | 'backtest' | 'tests' | 'docs';
-  setActiveTab: (tab: 'scanner' | 'studio' | 'backtest' | 'tests' | 'docs') => void;
+  activeTab: 'scanner' | 'studio' | 'backtest' | 'tests';
+  setActiveTab: (tab: 'scanner' | 'studio' | 'backtest' | 'tests') => void;
   connectionMode: ConnectionMode;
   onToggleConnection: () => void;
   onOpenRiskModal: () => void;
+  clientEmail?: string;
+  onLogOut: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -23,10 +25,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   setActiveTab,
   connectionMode,
   onToggleConnection,
-  onOpenRiskModal
+  onOpenRiskModal,
+  clientEmail,
+  onLogOut
 }) => {
   const isLive = connectionMode === 'CONNECTED_LIVE';
-  const isSimulated = connectionMode === 'SIMULATED';
   const isReconnecting = connectionMode === 'RECONNECTING';
 
   return (
@@ -43,7 +46,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </a>
       </div>
 
-      {/* Zone 2: Navigation Links (Single-line, unboxed) */}
+      {/* Zone 2: Navigation Links (Single-line, unboxed, strictly client-facing) */}
       <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-neutral-400">
         <button
           onClick={() => setActiveTab('scanner')}
@@ -67,7 +70,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             activeTab === 'backtest' ? 'text-white border-b-2 border-rose-500 pb-0.5' : 'hover:text-neutral-200'
           }`}
         >
-          Backtest & Calibration
+          Backtest &amp; Calibration
         </button>
         <button
           onClick={() => setActiveTab('tests')}
@@ -77,23 +80,15 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           Automated Test Suite
         </button>
-        <button
-          onClick={() => setActiveTab('docs')}
-          className={`transition-colors whitespace-nowrap shrink-0 ${
-            activeTab === 'docs' ? 'text-white border-b-2 border-rose-500 pb-0.5' : 'hover:text-neutral-200'
-          }`}
-        >
-          Architecture & Math Specs
-        </button>
       </nav>
 
-      {/* Zone 3: Connection & Risk Action Controls */}
-      <div className="flex items-center gap-2.5 shrink-0">
+      {/* Zone 3: Connection & Client License Controls (Download zip removed) */}
+      <div className="flex items-center gap-2.5 shrink-0 font-mono text-xs">
         {/* Connection Mode Toggle */}
         <button
           onClick={onToggleConnection}
           title={isLive ? 'Connected to live Deriv WebSocket. Click to toggle Simulation.' : 'Operating in calibrated Simulation mode. Click to connect to Deriv WebSocket.'}
-          className={`flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-medium rounded-md transition-colors border whitespace-nowrap shrink-0 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 font-medium rounded-md transition-colors border whitespace-nowrap shrink-0 ${
             isLive
               ? 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/60'
               : isReconnecting
@@ -104,7 +99,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           {isLive ? (
             <>
               <Radio className="w-3.5 h-3.5 text-emerald-400" />
-              <span>DERIV WS: LIVE</span>
+              <span>DERIV LIVE</span>
             </>
           ) : isReconnecting ? (
             <>
@@ -114,30 +109,34 @@ export const TopBar: React.FC<TopBarProps> = ({
           ) : (
             <>
               <Cpu className="w-3.5 h-3.5 text-neutral-400" />
-              <span>SIMULATED FEED</span>
+              <span>CALIBRATED FEED</span>
             </>
           )}
         </button>
 
-        {/* Risk Limits Drawer Button */}
+        {/* Risk Controls */}
         <button
           onClick={onOpenRiskModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-300 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 hover:text-white rounded-md transition-colors whitespace-nowrap shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 font-medium text-neutral-300 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 hover:text-white rounded-md transition-colors whitespace-nowrap shrink-0"
         >
           <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
           <span className="hidden sm:inline">Risk Controls</span>
         </button>
 
-        {/* Download Project ZIP */}
-        <a
-          href="./dolahanta.zip"
-          download="dolahanta.zip"
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium text-white bg-rose-600 hover:bg-rose-500 rounded-md transition-colors whitespace-nowrap shrink-0 shadow-sm"
-          title="Download complete project source files as ZIP"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Download ZIP</span>
-        </a>
+        {/* Client License Badge & Sign Out */}
+        <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-neutral-800">
+          <div className="flex items-center gap-1 text-[11px] text-emerald-400">
+            <CheckCircle className="w-3.5 h-3.5" />
+            <span className="truncate max-w-[100px]">{clientEmail || 'Licensed'}</span>
+          </div>
+          <button
+            onClick={onLogOut}
+            title="Lock terminal and sign out"
+            className="p-1.5 text-neutral-400 hover:text-rose-400 hover:bg-neutral-900 rounded transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
     </header>
   );

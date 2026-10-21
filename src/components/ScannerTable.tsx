@@ -24,7 +24,9 @@ import {
   Clock,
   AlertTriangle,
   XCircle,
-  HelpCircle
+  HelpCircle,
+  Info,
+  X
 } from 'lucide-react';
 
 interface ScannerTableProps {
@@ -45,6 +47,7 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
   const [minEV, setMinEV] = useState<number>(-1); // -1 = any
   const [minProb, setMinProb] = useState<number>(0);
   const [maxUncertainty, setMaxUncertainty] = useState<number>(1.0);
+  const [justifiedCandidate, setJustifiedCandidate] = useState<BarrierCandidate | null>(null);
 
   // Sorting
   const [sortBy, setSortBy] = useState<'ev' | 'prob' | 'uncertainty' | 'expiry' | 'distance'>('ev');
@@ -442,16 +445,29 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
 
                       {/* Action */}
                       <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectCandidate(candidate);
-                          }}
-                          className="px-2.5 py-1 text-xs font-mono font-medium text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded transition-colors inline-flex items-center gap-1"
-                        >
-                          <span>Analyze</span>
-                          <ChevronRight className="w-3 h-3" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setJustifiedCandidate(candidate);
+                            }}
+                            className="px-2 py-1 text-[11px] font-mono text-neutral-400 hover:text-white bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 rounded transition-colors inline-flex items-center gap-1"
+                            title="Inspect mathematical and empirical justification for all numbers"
+                          >
+                            <Info className="w-3 h-3 text-rose-500" />
+                            <span>Proof</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectCandidate(candidate);
+                            }}
+                            className="px-2.5 py-1 text-xs font-mono font-medium text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded transition-colors inline-flex items-center gap-1"
+                          >
+                            <span>Analyze</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -461,6 +477,88 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Mathematical & Microstructure Justification Inspector Modal */}
+      {justifiedCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in font-sans">
+          <div className="w-full max-w-2xl bg-neutral-950 border border-neutral-800 rounded-xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800 bg-neutral-900/60">
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-rose-500" />
+                <h3 className="text-sm font-bold text-white font-mono">
+                  Numerical Justification Proof — {justifiedCandidate.instrument.displayName} ({justifiedCandidate.contractType} {justifiedCandidate.barrierDirection})
+                </h3>
+              </div>
+              <button
+                onClick={() => setJustifiedCandidate(null)}
+                className="p-1 text-neutral-400 hover:text-white rounded transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 font-mono text-xs text-neutral-300 max-h-[80vh] overflow-y-auto">
+              <div className="p-3 bg-neutral-900/70 border border-neutral-800 rounded space-y-1">
+                <div className="text-white font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Empirical Market State Vectors (Observed, Not Simulated)</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 text-neutral-300">
+                  <div>Reference Spot: <span className="text-white font-bold">{justifiedCandidate.referencePrice}</span></div>
+                  <div>Barrier Level: <span className="text-white font-bold">{justifiedCandidate.barrierLevel}</span> ({justifiedCandidate.relativeDistancePct.toFixed(2)}%)</div>
+                  <div>Expiry Horizon: <span className="text-white font-bold">{justifiedCandidate.expirySeconds}s</span></div>
+                  <div>Contract Mode: <span className="text-white font-bold">{justifiedCandidate.contractType}</span></div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-white font-semibold text-[11px]">1. First-Passage Time Probability Derivation</div>
+                <div className="p-3 bg-neutral-900/70 border border-neutral-800 rounded text-[11px] space-y-1">
+                  <div>&bull; Model: Analytical Reflection Principle under Geometric Brownian Motion with drift</div>
+                  <div>&bull; Hitting Probability P(&tau; &le; T): <span className="text-cyan-400 font-bold">{(justifiedCandidate.rawTouchProbability * 100).toFixed(2)}%</span></div>
+                  <div>&bull; Contract Success Probability p: <span className="text-emerald-400 font-bold">{(justifiedCandidate.estimatedProbability * 100).toFixed(2)}%</span></div>
+                  <div>&bull; 95% Wilson Confidence Interval: <span className="text-amber-400 font-bold">[{(justifiedCandidate.uncertaintyInterval[0] * 100).toFixed(1)}% &ndash; {(justifiedCandidate.uncertaintyInterval[1] * 100).toFixed(1)}%]</span></div>
+                  <div>&bull; Standard Error (&plusmn;SE): <span className="text-neutral-200 font-bold">&plusmn;{(justifiedCandidate.standardError * 100).toFixed(2)}%</span></div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-white font-semibold text-[11px]">2. Deriv Contract Economics Proof</div>
+                <div className="p-3 bg-neutral-900/70 border border-neutral-800 rounded text-[11px] space-y-1">
+                  <div>&bull; Deriv Gross Payout Multiplier: <span className="text-white font-bold">{justifiedCandidate.payoutMultiplier.toFixed(2)}x</span> (Net return R = +{(justifiedCandidate.netReturnMultiplier * 100).toFixed(0)}%)</div>
+                  <div>&bull; Expected Return Formula: EV/unit = p &middot; R - (1 - p)</div>
+                  <div>&bull; Value Substitution: ({justifiedCandidate.estimatedProbability.toFixed(3)} &times; {justifiedCandidate.netReturnMultiplier.toFixed(2)}) &ndash; ({(1 - justifiedCandidate.estimatedProbability).toFixed(3)} &times; 1.0)</div>
+                  <div>&bull; Exact Unit Edge: <span className={justifiedCandidate.expectedProfitPerUnit >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{(justifiedCandidate.expectedProfitPerUnit * 100).toFixed(2)}%</span></div>
+                  <div>&bull; Dollar Value on ${justifiedCandidate.stake} Stake: <span className={justifiedCandidate.expectedValue >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>${justifiedCandidate.expectedValue.toFixed(2)}</span></div>
+                  <div>&bull; Conservative 95% Lower Bound EV: <span className="text-neutral-200 font-bold">${justifiedCandidate.conservativeEV.toFixed(2)}</span></div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="text-white font-semibold text-[11px]">3. Decision Classification Verdict</div>
+                <div className="p-3 bg-neutral-900/70 border border-neutral-800 rounded text-[11px] space-y-1">
+                  <div>Status: <span className="text-white font-bold">{justifiedCandidate.qualificationStatus}</span></div>
+                  {justifiedCandidate.inclusionReasons.map((r, i) => (
+                    <div key={i} className="text-emerald-400">&bull; Pass: {r}</div>
+                  ))}
+                  {justifiedCandidate.rejectionReasons.map((r, i) => (
+                    <div key={i} className="text-rose-400">&bull; Filter: {r}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-5 py-3 border-t border-neutral-800 bg-neutral-900/40 text-right">
+              <button
+                onClick={() => setJustifiedCandidate(null)}
+                className="px-4 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-xs rounded transition-colors"
+              >
+                Close Proof
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

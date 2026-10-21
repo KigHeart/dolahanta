@@ -8,7 +8,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const distPath = path.join(__dirname, 'dist');
+const distPath = fs.existsSync(path.join(__dirname, 'dist'))
+  ? path.join(__dirname, 'dist')
+  : path.join(__dirname, 'docs');
 
 // Health check endpoint for Cloud Run / Kubernetes
 app.get('/health', (req, res) => {

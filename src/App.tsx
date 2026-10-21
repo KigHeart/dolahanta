@@ -12,11 +12,21 @@ import { ScannerTable } from './components/ScannerTable';
 import { BarrierStudio } from './components/BarrierStudio';
 import { BacktestLab } from './components/BacktestLab';
 import { TestSuiteRunner } from './components/TestSuiteRunner';
-import { DocumentationModal } from './components/DocumentationModal';
 import { RiskSettingsModal } from './components/RiskSettingsModal';
+import { ClientAuthGate } from './components/ClientAuthGate';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'scanner' | 'studio' | 'backtest' | 'tests' | 'docs'>('scanner');
+  // Client Authentication State (Paid Service Gate)
+  const [clientAuth, setClientAuth] = useState<{ email: string; licenseTier: string; licenseKey: string } | null>(() => {
+    try {
+      const stored = localStorage.getItem('dolahanta_auth');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [activeTab, setActiveTab] = useState<'scanner' | 'studio' | 'backtest' | 'tests'>('scanner');
   const [candidates, setCandidates] = useState<BarrierCandidate[]>(() => marketDataManager.getAllCandidates());
   const [marketStates, setMarketStates] = useState<MarketState[]>(() => marketDataManager.getAllMarketStates());
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>(() => marketDataManager.getMode());
@@ -59,6 +69,11 @@ export function App() {
     setActiveTab('studio');
   };
 
+  const handleLogOut = () => {
+    localStorage.removeItem('dolahanta_auth');
+    setClientAuth(null);
+  };
+
   // Build tick history map for backtesting lab
   const tickHistoryMap = new Map<string, Tick[]>();
   for (const s of marketStates) {
@@ -68,15 +83,22 @@ export function App() {
   const currentStudioState = selectedCandidate ? marketDataManager.getMarketState(selectedCandidate.instrument.symbol) : marketStates[0];
   const currentStudioTicks = selectedCandidate ? marketDataManager.getTickHistory(selectedCandidate.instrument.symbol) : [];
 
+  // If client is not authenticated with valid subscription, render Login Gate
+  if (!clientAuth) {
+    return <ClientAuthGate onAuthenticated={(info) => setClientAuth(info)} />;
+  }
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans selection:bg-rose-900 selection:text-white">
-      {/* 3-Zone Top Navigation Bar */}
+      {/* 3-Zone Top Navigation Bar (Download Zip & Internal Specs removed) */}
       <TopBar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         connectionMode={connectionMode}
         onToggleConnection={handleToggleConnection}
         onOpenRiskModal={() => setIsRiskModalOpen(true)}
+        clientEmail={clientAuth.email}
+        onLogOut={handleLogOut}
       />
 
       {/* Mobile Sub-Navigation Bar for small viewports */}
@@ -112,14 +134,6 @@ export function App() {
           }`}
         >
           Automated Test Suite
-        </button>
-        <button
-          onClick={() => setActiveTab('docs')}
-          className={`px-3 py-1.5 rounded transition-colors whitespace-nowrap shrink-0 ${
-            activeTab === 'docs' ? 'bg-neutral-800 text-white font-bold' : 'text-neutral-400 hover:text-white'
-          }`}
-        >
-          Specs &amp; Deliverables
         </button>
       </div>
 
@@ -158,10 +172,6 @@ export function App() {
         {activeTab === 'tests' && (
           <TestSuiteRunner />
         )}
-
-        {activeTab === 'docs' && (
-          <DocumentationModal />
-        )}
       </main>
 
       {/* Risk Controls Drawer / Modal */}
@@ -174,15 +184,15 @@ export function App() {
         onSaveAppId={(appId) => setCustomAppId(appId)}
       />
 
-      {/* Quiet, Professional Quantitative Footer */}
-      <footer className="border-t border-neutral-900 bg-neutral-950 py-4 px-6 text-xs text-neutral-400 font-mono flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Quiet, Professional Quantitative Footer with Exact Author Signature */}
+      <footer className="border-t border-neutral-900 bg-neutral-950 py-5 px-6 text-xs text-neutral-400 font-mono flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-neutral-200">DolaHanta</span>
+          <span className="font-bold text-neutral-200">DolaHanta Terminal</span>
           <span>·</span>
-          <span>Deriv Touch &amp; No Touch Intelligence Platform</span>
+          <span>Deriv Touch &amp; No Touch Intelligence</span>
         </div>
-        <div className="text-center sm:text-right text-[11px] text-neutral-400">
-          Decision support only. No automatic trade execution. First-passage models are statistical estimates.
+        <div className="text-center sm:text-right text-xs text-neutral-400">
+          Designed by <span className="text-neutral-200 font-semibold">Kiprop arap Yego</span>
         </div>
       </footer>
     </div>
